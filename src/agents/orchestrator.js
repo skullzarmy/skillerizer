@@ -11,8 +11,9 @@
  *
  * `send(event)` signature:  send({ type, agent?, message?, chunk?, result? })
  */
-import { analyze } from './analyzer.js';
-import { writeSkill } from './writer.js';
+import { analyze } from "./analyzer.js";
+import { writeSkill } from "./writer.js";
+import { suggestFilename } from "./namer.js";
 
 /**
  * Run the generation pipeline after clarification is complete.
@@ -23,56 +24,83 @@ import { writeSkill } from './writer.js';
  * @param {string}      opts.userIntent     — distilled intent from clarifier
  * @param {function}    opts.send           — SSE emitter: send({type, ...})
  * @param {AbortSignal} [opts.signal]       — optional signal to cancel LLM calls
- * @returns {Promise<string>}  the finished skill markdown
+ * @returns {Promise<{skill: string, filename: string}>}  the finished skill markdown and suggested filename
  */
 export async function runPipeline({ sourceContent, sourceUrl, userIntent, send, signal }) {
-  // ── Step 1: Announce pipeline start ────────────────────────────────────────
-  send({ type: 'pipeline_start', message: 'Starting agentic skill-generation pipeline…' });
+    // ── Step 1: Announce pipeline start ────────────────────────────────────────
+    send({ type: "pipeline_start", message: "Starting agentic skill-generation pipeline…" });
 
-  // ── Step 2: Analyzer ───────────────────────────────────────────────────────
-  send({
-    type: 'agent_start',
-    agent: 'analyzer',
-    message: 'Analyzing source content and classifying skill type…',
-  });
-
-  let analysis;
-  try {
-    analysis = await analyze(sourceContent, userIntent, signal);
+    // ── Step 2: Analyzer ───────────────────────────────────────────────────────
     send({
-      type: 'agent_complete',
-      agent: 'analyzer',
-      message: `Analysis complete. Skill type: ${analysis.skillType} | Domain: ${analysis.domain}`,
-      result: analysis,
+        type: "agent_start",
+        agent: "analyzer",
+        message: "Analyzing source content and classifying skill type…",
     });
-  } catch (err) {
-    send({ type: 'agent_error', agent: 'analyzer', message: err.message });
-    throw err;
-  }
 
-  // ── Step 3: Writer (streaming) ─────────────────────────────────────────────
-  send({
-    type: 'agent_start',
-    agent: 'writer',
-    message: `Writing ${analysis.skillType} skill: "${analysis.title}"…`,
-  });
+    let analysis;
+    try {
+        analysis = await analyze(sourceContent, userIntent, signal);
+        send({
+            type: "agent_complete",
+            agent: "analyzer",
+            message: `Analysis complete. Skill type: ${analysis.skillType} | Domain: ${analysis.domain}`,
+            result: analysis,
+        });
+    } catch (err) {
+        send({ type: "agent_error", agent: "analyzer", message: err.message });
+        throw err;
+    }
 
-  let skill = '';
-  try {
-    skill = await writeSkill(analysis, userIntent, sourceUrl, (chunk) => {
-      send({ type: 'skill_chunk', chunk });
-    }, signal);
+    // ── Step 3: Writer (streaming) ─────────────────────────────────────────────
     send({
-      type: 'agent_complete',
-      agent: 'writer',
-      message: 'Skill document complete.',
+        type: "agent_start",
+        agent: "writer",
+        message: `Writing ${analysis.skillType} skill: "${analysis.title}"…`,
     });
-  } catch (err) {
-    send({ type: 'agent_error', agent: 'writer', message: err.message });
-    throw err;
-  }
 
-  // ── Step 4: Done ───────────────────────────────────────────────────────────
-  send({ type: 'pipeline_done', skill });
-  return skill;
+    let skill = "";
+    try {
+        skill = await writeSkill(
+            analysis,
+            userIntent,
+            sourceUrl,
+            (chunk) => {
+                send({ type: "skill_chunk", chunk });
+            },
+            signal,
+        );
+        send({
+            type: "agent_complete",
+            agent: "writer",
+            message: "Skill document complete.",
+        });
+    } catch (err) {
+        send({ type: "agent_error", agent: "writer", message: err.message });
+        throw err;
+    }
+
+    // ── Step 4: Namer ──────────────────────────────────────────────────────────
+    send({
+        type: "agent_start",
+        agent: "namer",
+        message: "Choosing a descriptive filename…",
+    });
+
+    let filename = "skill";
+    try {
+        filename = await suggestFilename(analysis, signal);
+        send({
+            type: "agent_complete",
+            agent: "namer",
+            message: `Filename: ${filename}.md`,
+            result: { filename },
+        });
+    } catch {
+        // Non-fatal — fall back to generic name
+        send({ type: "agent_complete", agent: "namer", message: "Using default filename." });
+    }
+
+    // ── Step 5: Done ───────────────────────────────────────────────────────────
+    send({ type: "pipeline_done", skill, filename });
+    return { skill, filename };
 }

@@ -14,6 +14,7 @@ const state = {
     sessionId: null,
     status: "idle", // idle | sourcing | clarifying | ready | generating | done
     skill: "",
+    filename: "skill", // suggested filename (without .md)
 };
 
 /* ── DOM refs ──────────────────────────────────────────────────────────────── */
@@ -143,11 +144,13 @@ async function newSession() {
     const { id } = await api("POST", "/session");
     state.sessionId = id;
     state.skill = "";
+    state.filename = "skill";
     previewArea.textContent = "";
     chatMessages.innerHTML = "";
     agentLog.innerHTML = "";
     setStatus("idle");
     activateStep("source");
+    updateFilenameLabel();
 }
 
 /* ── Activate a step ──────────────────────────────────────────────────────── */
@@ -430,10 +433,12 @@ async function startGeneration() {
         } else if (event.type === "pipeline_done") {
             hideLoadingAnimation();
             state.skill = event.skill;
+            state.filename = event.filename || "skill";
             evtSource.close();
             setStatus("done");
             activateStep("output");
             generateBtn.disabled = false;
+            updateFilenameLabel();
         } else if (event.type === "error") {
             hideLoadingAnimation();
             addAgentEvent({ type: "error", message: event.message });
@@ -473,7 +478,7 @@ function downloadSkill() {
   const blob = new Blob([text], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'skill.md';
+  a.download = `${state.filename}.md`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -486,6 +491,11 @@ function showPreviewActions() {
 function hidePreviewActions() {
   $('#preview-copy-btn').style.display = 'none';
   $('#preview-download-btn').style.display = 'none';
+}
+
+function updateFilenameLabel() {
+  const el = $('#preview-filename');
+  if (el) el.textContent = `${state.filename}.md`;
 }
 
 $('#copy-btn').addEventListener('click', () => copySkill($('#copy-btn')));

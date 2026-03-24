@@ -76,6 +76,7 @@ router.post("/session", (req, res) => {
         history: [], // conversation log [{role, content}] (for state endpoint)
         intentSummary: "", // extracted after READY_TO_GENERATE
         skill: null, // final markdown
+        filename: null, // suggested filename (without .md)
         status: "idle", // idle | clarifying | generating | done | error
     });
     res.json({ id });
@@ -203,7 +204,7 @@ router.get("/session/:id/generate", async (req, res) => {
         // If the user hasn't gone through clarification, derive intent from history
         const userIntent = session.intentSummary || `Create a comprehensive skills.md for: ${session.source.title}`;
 
-        const skill = await runPipeline({
+        const { skill, filename } = await runPipeline({
             sourceContent: session.source.text,
             sourceUrl: session.source.url,
             userIntent,
@@ -212,6 +213,7 @@ router.get("/session/:id/generate", async (req, res) => {
         });
 
         session.skill = skill;
+        session.filename = filename || "skill";
         session.status = "done";
     } catch (err) {
         send({ type: "error", message: err.message });
@@ -235,6 +237,7 @@ router.get("/session/:id", (req, res) => {
         historyLength: session.history.length,
         intentSummary: session.intentSummary,
         skill: session.skill,
+        filename: session.filename,
     });
 });
 
