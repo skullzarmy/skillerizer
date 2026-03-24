@@ -6,10 +6,10 @@
  *  - Target consumers (human reader, AI agent, copilot context)
  *  - Emphasis areas, detail level, any constraints
  *
- * Emits SSE events via `emit` callback.
- * Returns the latest AI message so the caller can relay it to the user.
+ * Uses a persistent Copilot SDK session per user session so the conversation
+ * history is maintained automatically by the SDK.
  */
-import { streamChat } from '../config.js';
+import { createAgentSession } from "../config.js";
 
 const SYSTEM = `You are Skillerizer's clarification specialist.
 Your goal is to have a focused, friendly conversation to understand what kind of skills.md document the user needs.
@@ -24,14 +24,27 @@ Rules:
 - Ask at most 2 focused questions per message.
 - Be conversational and concise — no bullet-point interrogations.
 - When you have enough information to proceed, say exactly: "READY_TO_GENERATE" on its own line, then briefly summarise the intent.
-- Never produce the skill itself — that is another agent's job.`;
+- Never produce the skill itself — that is another agent's job.
+- Respond with text only.`;
 
 /**
- * @param {Array<{role: string, content: string}>} history — full conversation so far
- * @param {function(string): void} emit — called with each text chunk
+ * Create a new Copilot SDK session for the clarifier agent.
+ * The returned session maintains its own conversation history.
+ *
+ * @returns {Promise<import('@github/copilot-sdk').CopilotSession>}
+ */
+export async function createClarifierSession() {
+    return createAgentSession(SYSTEM);
+}
+
+/**
+ * Send a message to an existing clarifier session and return the full response.
+ *
+ * @param {import('@github/copilot-sdk').CopilotSession} session — SDK session
+ * @param {string} message — the user message to send
  * @returns {Promise<string>} full assistant response
  */
-export async function clarify(history, emit) {
-  const messages = [{ role: 'system', content: SYSTEM }, ...history];
-  return streamChat({ messages, onChunk: emit, temperature: 0.7 });
+export async function clarifyMessage(session, message) {
+    const response = await session.sendAndWait({ prompt: message });
+    return response?.data?.content ?? "";
 }

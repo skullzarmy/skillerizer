@@ -4,27 +4,16 @@
  * Reads the source material (web content or pasted text) and produces a
  * structured JSON analysis that the Writer agent uses to build the skill.
  *
- * Output schema:
- * {
- *   title: string,
- *   domain: string,         // e.g. "web application", "API docs", "article"
- *   skillType: "interaction" | "extraction" | "hybrid",
- *   summary: string,
- *   keyTopics: string[],
- *   interactionPatterns: string[],  // UI flows, commands, API endpoints
- *   extractedFacts: string[],       // key data points / knowledge
- *   prerequisites: string[],
- *   caveats: string[],
- *   suggestedSections: string[]     // ordered list of sections for the skill
- * }
+ * Uses an ephemeral Copilot SDK session — created, used once, then disconnected.
  */
-import { chat } from '../config.js';
+import { createAgentSession } from "../config.js";
 
 const SYSTEM = `You are Skillerizer's content analysis specialist.
 Given a source document and the user's stated intent, produce a precise JSON analysis.
 Your analysis directly feeds the skill-writing agent — be thorough but factual.
 Do NOT invent information not present in the source.
 Respond ONLY with valid JSON matching the schema below — no markdown fences, no explanation.
+Respond with text only.
 
 Schema:
 {
@@ -47,35 +36,42 @@ Schema:
  * @returns {Promise<object>} parsed analysis object
  */
 export async function analyze(sourceContent, userIntent, signal) {
-  const userMsg = `USER INTENT:\n${userIntent}\n\nSOURCE CONTENT:\n${sourceContent}`;
-  const raw = await chat({
-    messages: [
-      { role: 'system', content: SYSTEM },
-      { role: 'user', content: userMsg },
-    ],
-    temperature: 0.3,
-    maxTokens: 2048,
-    signal,
-  });
+    const userMsg = `USER INTENT:\n${userIntent}\n\nSOURCE CONTENT:\n${sourceContent}`;
 
-  // Strip any accidental markdown fences
-  const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-  try {
-    return JSON.parse(clean);
-  } catch {
-    // Fallback: return minimal structure so the pipeline doesn't break
-    return {
-      title: 'Untitled Source',
-      domain: 'unknown',
-      skillType: 'extraction',
-      summary: sourceContent.slice(0, 300),
-      keyTopics: [],
-      interactionPatterns: [],
-      extractedFacts: [],
-      prerequisites: [],
-      caveats: [],
-      suggestedSections: ['Overview', 'Key Concepts', 'Usage', 'Examples'],
-      _parseError: clean.slice(0, 200),
-    };
-  }
+    const session = await createAgentSession(SYSTEM);
+
+    if (signal) {
+        signal.addEventListener("abort", () => session.abort().catch(() => {}), { once: true });
+    }
+
+    try {
+        const response = await session.sendAndWait({ prompt: userMsg });
+        const raw = response?.data?.content ?? "";
+
+        // Strip any accidental markdown fences
+        const clean = raw
+            .replace(/^```(?:json)?\s*/i, "")
+            .replace(/\s*```$/, "")
+            .trim();
+        try {
+            return JSON.parse(clean);
+        } catch {
+            // Fallback: return minimal structure so the pipeline doesn't break
+            return {
+                title: "Untitled Source",
+                domain: "unknown",
+                skillType: "extraction",
+                summary: sourceContent.slice(0, 300),
+                keyTopics: [],
+                interactionPatterns: [],
+                extractedFacts: [],
+                prerequisites: [],
+                caveats: [],
+                suggestedSections: ["Overview", "Key Concepts", "Usage", "Examples"],
+                _parseError: clean.slice(0, 200),
+            };
+        }
+    } finally {
+        await session.disconnect().catch(() => {});
+    }
 }

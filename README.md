@@ -2,7 +2,7 @@
 
 **Feed a website or any content source, get a comprehensive Claude-style `skills.md` document.**
 
-Skillerizer is a locally-hosted web interface powered by an agentic LLM pipeline. It has an upfront conversation to understand exactly what kind of skill you need — interactive guidance, knowledge extraction, or both — then coordinates multiple specialised AI agents to produce a high-quality `skills.md` document ready for use as AI agent context.
+Skillerizer is a locally-hosted web interface powered by the [**GitHub Copilot SDK**](https://github.com/github/copilot-sdk). It uses an agentic pipeline backed by Copilot's production-tested agent runtime. It has an upfront conversation to understand exactly what kind of skill you need — interactive guidance, knowledge extraction, or both — then coordinates multiple specialised AI agents to produce a high-quality `skills.md` document ready for use as AI agent context.
 
 ![Skillerizer UI](https://github.com/user-attachments/assets/8d536db7-0dce-4585-8434-977b66b40812)
 
@@ -11,14 +11,15 @@ Skillerizer is a locally-hosted web interface powered by an agentic LLM pipeline
 ## Features
 
 - 🗣️ **Upfront clarification conversation** — the AI asks focused questions to understand your intent before generating anything
-- 🤖 **Agentic pipeline** (OpenClaw-style coordination):
-  - **Clarifier** — captures skill purpose, consumer, and emphasis
-  - **Analyzer** — classifies the source as `interaction`, `extraction`, or `hybrid` and extracts structured facts
-  - **Writer** — streams a complete, well-formatted `skills.md` document
+- 🤖 **Agentic pipeline** powered by `@github/copilot-sdk`:
+    - **Clarifier** — captures skill purpose, consumer, and emphasis (persistent SDK session)
+    - **Analyzer** — classifies the source as `interaction`, `extraction`, or `hybrid` and extracts structured facts (ephemeral SDK session)
+    - **Writer** — streams a complete, well-formatted `skills.md` document (ephemeral SDK session with streaming)
 - 🔗 **URL or paste** — fetch any public URL, or paste raw text/docs directly
 - ⚡ **Real-time streaming** via SSE — watch the skill being written token by token
 - 📋 **Copy / Download** the final `skills.md` with one click
 - 🎨 **Modern dark-theme UI** — buttery-smooth, zero external framework dependencies
+- 🔑 **BYOK support** — use your own OpenAI, Anthropic, or Ollama keys via the SDK's provider config
 
 ---
 
@@ -26,8 +27,12 @@ Skillerizer is a locally-hosted web interface powered by an agentic LLM pipeline
 
 ### 1. Prerequisites
 
-- **Node.js ≥ 18** (uses native `fetch`)
-- A **GitHub Personal Access Token** with the `models` scope (free — [create one here](https://github.com/settings/tokens))
+- **Node.js ≥ 18**
+- **GitHub Copilot CLI** installed and in your PATH ([installation guide](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli))
+    ```bash
+    copilot --version   # verify it's installed
+    ```
+- A **GitHub Copilot subscription** (free tier available), or BYOK API keys
 
 ### 2. Install & configure
 
@@ -36,7 +41,7 @@ git clone https://github.com/skullzarmy/skillerizer
 cd skillerizer
 npm install
 cp .env.example .env
-# Edit .env and set GITHUB_TOKEN=ghp_...
+# Edit .env if you want to use BYOK or override the model
 ```
 
 ### 3. Run
@@ -56,14 +61,15 @@ npm run dev
 
 ## Configuration (`.env`)
 
-| Variable | Default | Description |
-|---|---|---|
-| `GITHUB_TOKEN` | — | GitHub PAT with `models` scope (GitHub Models provider) |
-| `LLM_PROVIDER` | `github` | `github` \| `openai` \| `ollama` |
-| `OPENAI_API_KEY` | — | Required if `LLM_PROVIDER=openai` |
-| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Required if `LLM_PROVIDER=ollama` |
-| `LLM_MODEL` | `openai/gpt-4o-mini` | Override model (e.g. `openai/gpt-4o`, `meta/llama-3.1-70b-instruct`) |
-| `PORT` | `3000` | HTTP server port |
+| Variable            | Default                     | Description                                                   |
+| ------------------- | --------------------------- | ------------------------------------------------------------- |
+| `GITHUB_TOKEN`      | —                           | GitHub token (or use `copilot auth login`)                    |
+| `LLM_PROVIDER`      | `github`                    | `github` \| `openai` \| `ollama` \| `anthropic`               |
+| `OPENAI_API_KEY`    | —                           | Required if `LLM_PROVIDER=openai`                             |
+| `OLLAMA_BASE_URL`   | `http://localhost:11434/v1` | Override if `LLM_PROVIDER=ollama`                             |
+| `ANTHROPIC_API_KEY` | —                           | Required if `LLM_PROVIDER=anthropic`                          |
+| `LLM_MODEL`         | `gpt-4o-mini`               | Override model (e.g. `gpt-4o`, `claude-sonnet-4.5`, `llama3`) |
+| `PORT`              | `3000`                      | HTTP server port                                              |
 
 ---
 
@@ -74,35 +80,37 @@ User provides URL / pasted text
         │
         ▼
   ┌─────────────┐
-  │  Clarifier  │  ← Asks 1-2 focused questions per turn
+  │  Clarifier  │  ← Persistent SDK session; asks 1-2 questions per turn
   └─────────────┘    until intent is fully understood
         │
         ▼
   ┌─────────────┐
-  │   Analyzer  │  ← Classifies skill type, extracts structured facts (JSON)
+  │   Analyzer  │  ← Ephemeral SDK session; classifies & extracts JSON
   └─────────────┘
         │
         ▼
   ┌─────────────┐
-  │    Writer   │  ← Streams the complete skills.md (SSE)
+  │    Writer   │  ← Ephemeral SDK session w/ streaming; writes skills.md
   └─────────────┘
         │
         ▼
   Final skills.md  →  Copy / Download
 ```
 
+Each agent is a **Copilot SDK session** with a specialised system prompt. The SDK manages conversation history, model interaction, and the underlying Copilot CLI process.
+
 ---
 
 ## API
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/session` | Create new session → `{id}` |
-| `POST` | `/api/session/:id/source` | Attach URL or text |
-| `POST` | `/api/session/:id/clarify/start` | Trigger first AI question |
-| `POST` | `/api/session/:id/message` | Send a chat reply |
-| `GET` | `/api/session/:id/generate` | SSE stream — run full pipeline |
-| `GET` | `/api/session/:id` | Session state |
+| Method | Path                             | Description                    |
+| ------ | -------------------------------- | ------------------------------ |
+| `POST` | `/api/session`                   | Create new session → `{id}`    |
+| `POST` | `/api/session/:id/source`        | Attach URL or text             |
+| `POST` | `/api/session/:id/clarify/start` | Trigger first AI question      |
+| `POST` | `/api/session/:id/message`       | Send a chat reply              |
+| `GET`  | `/api/session/:id/generate`      | SSE stream — run full pipeline |
+| `GET`  | `/api/session/:id`               | Session state                  |
 
 ---
 
@@ -110,18 +118,18 @@ User provides URL / pasted text
 
 ```
 skillerizer/
-├── server.js              # Express entry point
+├── server.js              # Express entry point + Copilot SDK lifecycle
 ├── src/
-│   ├── config.js          # LLM client factory (GitHub Models / OpenAI / Ollama)
+│   ├── config.js          # CopilotClient singleton + session factory + BYOK
 │   ├── agents/
-│   │   ├── clarifier.js   # Clarification conversation agent
-│   │   ├── analyzer.js    # Structured content analysis agent
-│   │   ├── writer.js      # skills.md generation agent
+│   │   ├── clarifier.js   # Clarification agent (persistent SDK session)
+│   │   ├── analyzer.js    # Content analysis agent (ephemeral SDK session)
+│   │   ├── writer.js      # skills.md generation agent (streaming SDK session)
 │   │   └── orchestrator.js# Pipeline coordinator
 │   ├── tools/
 │   │   └── fetcher.js     # URL → clean text extractor
 │   └── routes/
-│       └── api.js         # REST + SSE routes
+│       └── api.js         # REST + SSE routes + SDK session management
 └── public/
     ├── index.html
     ├── css/main.css
