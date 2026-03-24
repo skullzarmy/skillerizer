@@ -40,8 +40,8 @@ Skillerizer is a locally-hosted web interface powered by the [**GitHub Copilot S
 git clone https://github.com/skullzarmy/skillerizer
 cd skillerizer
 npm install
+# Optional — only needed for BYOK providers (OpenAI, Anthropic, Ollama)
 cp .env.example .env
-# Edit .env if you want to use BYOK or override the model
 ```
 
 ### 3. Run
@@ -61,9 +61,11 @@ npm run dev
 
 ## Configuration (`.env`)
 
+> **If you're using the default GitHub Copilot provider**, you don't need to configure any environment variables. The GitHub Copilot CLI handles authentication automatically once installed and logged in (`copilot auth login`). The `.env` file is only needed for **BYOK (Bring Your Own Key)** setups when using a non-GitHub provider like OpenAI, Anthropic, or Ollama.
+
 | Variable            | Default                     | Description                                                   |
 | ------------------- | --------------------------- | ------------------------------------------------------------- |
-| `GITHUB_TOKEN`      | —                           | GitHub token (or use `copilot auth login`)                    |
+| `GITHUB_TOKEN`      | —                           | GitHub token (only needed if not using Copilot CLI auth)      |
 | `LLM_PROVIDER`      | `github`                    | `github` \| `openai` \| `ollama` \| `anthropic`               |
 | `OPENAI_API_KEY`    | —                           | Required if `LLM_PROVIDER=openai`                             |
 | `OLLAMA_BASE_URL`   | `http://localhost:11434/v1` | Override if `LLM_PROVIDER=ollama`                             |
