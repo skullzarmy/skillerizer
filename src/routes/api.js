@@ -144,6 +144,7 @@ router.post('/session/:id/message', async (req, res) => {
     await clarify(session.history, (chunk) => { full += chunk; });
     res.json(processClarifierReply(session, full));
   } catch (err) {
+    session.status = 'error';
     res.status(500).json({ error: err.message });
   }
 });
