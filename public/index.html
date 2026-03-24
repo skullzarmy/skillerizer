@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skillerizer — AI Skill Generator</title>
+  <meta name="description" content="Locally-hosted AI assistant that converts any source into Claude-style skills.md documents using agentic coordination." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header id="header">
+  <div class="logo">
+    <span class="logo-icon">🎯</span>
+    <span class="logo-text">Skillerizer</span>
+  </div>
+  <div class="header-actions">
+    <span id="status-badge" class="badge badge-idle">idle</span>
+    <button id="new-session-btn" class="btn btn-ghost btn-sm">＋ New Session</button>
+  </div>
+</header>
+
+<!-- ── App layout ───────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- LEFT: workflow steps ──────────────────────────────────────────────────── -->
+  <aside class="panel" id="left-panel">
+    <div class="panel-header">
+      <span>Workflow</span>
+    </div>
+    <div id="workflow">
+
+      <!-- Step 1: Source ───────────────────────────────────────────────────── -->
+      <div class="step active" id="step-source">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <div class="step-title">Provide a Source</div>
+        </div>
+        <div class="step-body">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="url">🔗 URL</button>
+            <button class="tab" data-tab="paste">📄 Paste</button>
+          </div>
+
+          <!-- URL panel -->
+          <div class="tab-panel active" id="tab-url">
+            <input
+              type="text"
+              id="url-input"
+              placeholder="https://example.com/docs"
+              aria-label="URL to fetch"
+            />
+          </div>
+
+          <!-- Paste panel -->
+          <div class="tab-panel" id="tab-paste">
+            <input
+              type="text"
+              id="paste-title"
+              placeholder="Title (optional)"
+              style="margin-bottom: .5rem"
+              aria-label="Title for pasted content"
+            />
+            <textarea
+              id="paste-input"
+              placeholder="Paste any text, documentation, or content here…"
+              rows="5"
+              aria-label="Content to analyze"
+            ></textarea>
+          </div>
+
+          <button id="attach-btn" class="btn btn-primary btn-full" style="margin-top: .75rem">
+            Analyze Source
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Clarification ───────────────────────────────────────────── -->
+      <div class="step hidden" id="step-clarify">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <div class="step-title">Clarify Intent</div>
+        </div>
+        <div class="step-body">
+          <div id="chat-messages" role="log" aria-label="Conversation" aria-live="polite"></div>
+          <div class="chat-input-row">
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Reply to the assistant…"
+              aria-label="Chat message"
+              autocomplete="off"
+            />
+            <button id="send-btn" class="btn btn-primary btn-sm" aria-label="Send message">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Generate ───────────────────────────────────────────────── -->
+      <div class="step hidden" id="step-generate">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <div class="step-title">Generate Skill</div>
+        </div>
+        <div class="step-body">
+          <button id="generate-btn" class="btn btn-success btn-full" style="margin-bottom: .75rem">
+            🚀 Generate skills.md
+          </button>
+          <div id="agent-log" role="log" aria-label="Agent activity" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <!-- Step 4: Output (shown when done) ─────────────────────────────────── -->
+      <div class="step hidden" id="step-output">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <div class="step-title">Skill Ready</div>
+        </div>
+        <div class="step-body" style="display:flex; gap:.5rem; flex-wrap:wrap;">
+          <button id="copy-btn" class="btn btn-ghost btn-sm">📋 Copy</button>
+          <button id="download-btn" class="btn btn-ghost btn-sm">⬇️ Download .md</button>
+        </div>
+      </div>
+
+    </div><!-- /workflow -->
+  </aside>
+
+  <!-- RIGHT: skill preview ──────────────────────────────────────────────────── -->
+  <main class="panel" id="right-panel">
+    <div id="preview-toolbar" class="panel-header">
+      <span>Skill Preview</span>
+      <span class="spacer"></span>
+      <span style="font-family: var(--font-mono); font-size: .7rem; color: var(--text-faint);">skill.md</span>
+    </div>
+    <pre id="preview-area" role="region" aria-label="Generated skill document" aria-live="polite"></pre>
+  </main>
+
+</div><!-- /app -->
+
+<script src="/js/app.js" type="module"></script>
+</body>
+</html>
