@@ -1,0 +1,20 @@
+{
+  "name": "skillerizer",
+  "version": "1.0.0",
+  "description": "AI-powered skills.md generator with agentic coordination — locally hosted web interface",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "openai": "^4.47.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
