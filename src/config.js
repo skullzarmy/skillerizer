@@ -82,9 +82,10 @@ export async function stopClient() {
  * @param {string}  systemPrompt  — full system prompt for the agent
  * @param {object}  [opts]
  * @param {boolean} [opts.streaming=false] — enable streaming delta events
+ * @param {boolean} [opts.disableTools=false] — disable all built-in CLI tools (for chat-only agents)
  * @returns {Promise<import('@github/copilot-sdk').CopilotSession>}
  */
-export async function createAgentSession(systemPrompt, { streaming = false } = {}) {
+export async function createAgentSession(systemPrompt, { streaming = false, disableTools = false } = {}) {
     const client = await getClient();
 
     const config = {
@@ -92,11 +93,13 @@ export async function createAgentSession(systemPrompt, { streaming = false } = {
         onPermissionRequest: approveAll,
         streaming,
         systemMessage: { mode: "replace", content: systemPrompt },
-        // Disable all built-in tools — our agents are text-only responders.
-        // Without this the CLI agent tries to use filesystem/web tools and
-        // never reaches session.idle within the timeout window.
-        availableTools: [],
     };
+
+    // Only restrict tools for agents that are purely conversational.
+    // Agents that need to browse the web, read files, etc. keep full tool access.
+    if (disableTools) {
+        config.availableTools = [];
+    }
 
     const providerConfig = buildProviderConfig();
     if (providerConfig) {

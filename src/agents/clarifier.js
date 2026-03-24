@@ -34,7 +34,9 @@ Rules:
  * @returns {Promise<import('@github/copilot-sdk').CopilotSession>}
  */
 export async function createClarifierSession() {
-    return createAgentSession(SYSTEM);
+    // Clarifier is chat-only — disable tools so it doesn't wander off
+    // trying to browse/fetch when it should just be asking questions.
+    return createAgentSession(SYSTEM, { disableTools: true });
 }
 
 /**
