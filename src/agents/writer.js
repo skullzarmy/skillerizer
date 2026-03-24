@@ -69,7 +69,7 @@ export async function writeSkill(analysis, userIntent, sourceUrl, emit, signal) 
     });
 
     try {
-        const response = await session.sendAndWait({ prompt: userMsg });
+        const response = await session.sendAndWait({ prompt: userMsg }, 300_000);
         return response?.data?.content ?? "";
     } finally {
         unsub();

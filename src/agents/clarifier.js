@@ -45,6 +45,6 @@ export async function createClarifierSession() {
  * @returns {Promise<string>} full assistant response
  */
 export async function clarifyMessage(session, message) {
-    const response = await session.sendAndWait({ prompt: message });
+    const response = await session.sendAndWait({ prompt: message }, 120_000);
     return response?.data?.content ?? "";
 }

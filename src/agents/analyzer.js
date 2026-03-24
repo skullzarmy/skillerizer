@@ -45,7 +45,7 @@ export async function analyze(sourceContent, userIntent, signal) {
     }
 
     try {
-        const response = await session.sendAndWait({ prompt: userMsg });
+        const response = await session.sendAndWait({ prompt: userMsg }, 120_000);
         const raw = response?.data?.content ?? "";
 
         // Strip any accidental markdown fences

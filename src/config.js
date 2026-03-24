@@ -92,6 +92,10 @@ export async function createAgentSession(systemPrompt, { streaming = false } = {
         onPermissionRequest: approveAll,
         streaming,
         systemMessage: { mode: "replace", content: systemPrompt },
+        // Disable all built-in tools — our agents are text-only responders.
+        // Without this the CLI agent tries to use filesystem/web tools and
+        // never reaches session.idle within the timeout window.
+        availableTools: [],
     };
 
     const providerConfig = buildProviderConfig();
