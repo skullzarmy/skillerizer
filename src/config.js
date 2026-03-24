@@ -41,14 +41,14 @@ export const model = process.env.LLM_MODEL ?? DEFAULT_MODELS[provider] ?? 'opena
  * Convenience: stream a chat completion and call `onChunk(text)` for each delta.
  * Returns the full accumulated text.
  */
-export async function streamChat({ messages, onChunk, temperature = 0.7, maxTokens }) {
+export async function streamChat({ messages, onChunk, temperature = 0.7, maxTokens, signal }) {
   const stream = await llm.chat.completions.create({
     model,
     messages,
     stream: true,
     temperature,
     ...(maxTokens ? { max_tokens: maxTokens } : {}),
-  });
+  }, { signal });
 
   let full = '';
   for await (const chunk of stream) {
@@ -64,12 +64,12 @@ export async function streamChat({ messages, onChunk, temperature = 0.7, maxToke
 /**
  * Convenience: non-streaming chat, returns full text.
  */
-export async function chat({ messages, temperature = 0.7, maxTokens }) {
+export async function chat({ messages, temperature = 0.7, maxTokens, signal }) {
   const res = await llm.chat.completions.create({
     model,
     messages,
     temperature,
     ...(maxTokens ? { max_tokens: maxTokens } : {}),
-  });
+  }, { signal });
   return res.choices[0].message.content ?? '';
 }

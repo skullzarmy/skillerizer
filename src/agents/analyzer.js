@@ -43,9 +43,10 @@ Schema:
 /**
  * @param {string} sourceContent — raw text of the source
  * @param {string} userIntent — summary of what the user wants (from clarifier)
+ * @param {AbortSignal} [signal] — optional signal to cancel the LLM call
  * @returns {Promise<object>} parsed analysis object
  */
-export async function analyze(sourceContent, userIntent) {
+export async function analyze(sourceContent, userIntent, signal) {
   const userMsg = `USER INTENT:\n${userIntent}\n\nSOURCE CONTENT:\n${sourceContent}`;
   const raw = await chat({
     messages: [
@@ -54,6 +55,7 @@ export async function analyze(sourceContent, userIntent) {
     ],
     temperature: 0.3,
     maxTokens: 2048,
+    signal,
   });
 
   // Strip any accidental markdown fences

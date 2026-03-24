@@ -18,14 +18,21 @@ const router = Router();
 /** In-memory session store  { [id]: Session } */
 const sessions = new Map();
 
-function getSession(id) {
-  const s = sessions.get(id);
-  if (!s) {
-    const err = new Error('Session not found');
-    err.status = 404;
-    throw err;
+/** Sessions expire 2 hours after creation. */
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+
+// Prune expired sessions every 10 minutes.
+// .unref() ensures this timer won't keep an otherwise-idle Node process alive.
+setInterval(() => {
+  const cutoff = Date.now() - SESSION_TTL_MS;
+  for (const [id, session] of sessions) {
+    if (session.createdAt < cutoff) sessions.delete(id);
   }
-  return s;
+}, 10 * 60 * 1000).unref();
+
+/** Returns the session or null — never throws. */
+function getSession(id) {
+  return sessions.get(id) ?? null;
 }
 
 /**
@@ -68,6 +75,7 @@ router.post('/session', (req, res) => {
  */
 router.post('/session/:id/source', async (req, res) => {
   const session = getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
   const { url, text, title } = req.body ?? {};
 
   try {
@@ -113,6 +121,7 @@ router.post('/session/:id/source', async (req, res) => {
  */
 router.post('/session/:id/clarify/start', async (req, res) => {
   const session = getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
   if (!session.source) return res.status(400).json({ error: 'Attach a source first' });
 
   try {
@@ -134,6 +143,7 @@ router.post('/session/:id/clarify/start', async (req, res) => {
  */
 router.post('/session/:id/message', async (req, res) => {
   const session = getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
   const { content } = req.body ?? {};
   if (!content?.trim()) return res.status(400).json({ error: 'Message content required' });
   if (!session.source) return res.status(400).json({ error: 'Attach a source first' });
@@ -157,6 +167,7 @@ router.post('/session/:id/message', async (req, res) => {
  */
 router.get('/session/:id/generate', async (req, res) => {
   const session = getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
   if (!session.source) {
     return res.status(400).json({ error: 'No source attached to session' });
   }
@@ -168,8 +179,14 @@ router.get('/session/:id/generate', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
+  // Abort the pipeline if the client disconnects
+  const controller = new AbortController();
+  req.on('close', () => controller.abort());
+
   const send = (event) => {
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
+    if (!controller.signal.aborted) {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    }
   };
 
   session.status = 'generating';
@@ -185,6 +202,7 @@ router.get('/session/:id/generate', async (req, res) => {
       sourceUrl: session.source.url,
       userIntent,
       send,
+      signal: controller.signal,
     });
 
     session.skill = skill;
@@ -203,6 +221,7 @@ router.get('/session/:id/generate', async (req, res) => {
  */
 router.get('/session/:id', (req, res) => {
   const session = getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
   res.json({
     id: session.id,
     status: session.status,
@@ -213,6 +232,16 @@ router.get('/session/:id', (req, res) => {
     intentSummary: session.intentSummary,
     skill: session.skill,
   });
+});
+
+/**
+ * DELETE /api/session/:id
+ * Immediately removes the session to free memory.
+ */
+router.delete('/session/:id', (req, res) => {
+  if (!sessions.has(req.params.id)) return res.status(404).json({ error: 'Session not found' });
+  sessions.delete(req.params.id);
+  res.json({ ok: true });
 });
 
 export default router;

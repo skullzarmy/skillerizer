@@ -18,13 +18,14 @@ import { writeSkill } from './writer.js';
  * Run the generation pipeline after clarification is complete.
  *
  * @param {object} opts
- * @param {string}   opts.sourceContent  — raw text of the source
- * @param {string}   opts.sourceUrl      — original URL (or '')
- * @param {string}   opts.userIntent     — distilled intent from clarifier
- * @param {function} opts.send           — SSE emitter: send({type, ...})
+ * @param {string}      opts.sourceContent  — raw text of the source
+ * @param {string}      opts.sourceUrl      — original URL (or '')
+ * @param {string}      opts.userIntent     — distilled intent from clarifier
+ * @param {function}    opts.send           — SSE emitter: send({type, ...})
+ * @param {AbortSignal} [opts.signal]       — optional signal to cancel LLM calls
  * @returns {Promise<string>}  the finished skill markdown
  */
-export async function runPipeline({ sourceContent, sourceUrl, userIntent, send }) {
+export async function runPipeline({ sourceContent, sourceUrl, userIntent, send, signal }) {
   // ── Step 1: Announce pipeline start ────────────────────────────────────────
   send({ type: 'pipeline_start', message: 'Starting agentic skill-generation pipeline…' });
 
@@ -37,7 +38,7 @@ export async function runPipeline({ sourceContent, sourceUrl, userIntent, send }
 
   let analysis;
   try {
-    analysis = await analyze(sourceContent, userIntent);
+    analysis = await analyze(sourceContent, userIntent, signal);
     send({
       type: 'agent_complete',
       agent: 'analyzer',
@@ -60,7 +61,7 @@ export async function runPipeline({ sourceContent, sourceUrl, userIntent, send }
   try {
     skill = await writeSkill(analysis, userIntent, sourceUrl, (chunk) => {
       send({ type: 'skill_chunk', chunk });
-    });
+    }, signal);
     send({
       type: 'agent_complete',
       agent: 'writer',

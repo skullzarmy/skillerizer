@@ -36,9 +36,10 @@ Tone: precise, informative, AI-assistant-friendly`;
  * @param {string} userIntent — clarified user intent
  * @param {string} sourceUrl — original source URL (empty string if paste)
  * @param {function(string): void} emit — called with each streaming text chunk
+ * @param {AbortSignal} [signal] — optional signal to cancel the LLM call
  * @returns {Promise<string>} full skill markdown text
  */
-export async function writeSkill(analysis, userIntent, sourceUrl, emit) {
+export async function writeSkill(analysis, userIntent, sourceUrl, emit, signal) {
   const contextBlock = JSON.stringify(analysis, null, 2);
   const userMsg = [
     `SOURCE URL: ${sourceUrl || '(pasted text)'}`,
@@ -60,5 +61,6 @@ export async function writeSkill(analysis, userIntent, sourceUrl, emit) {
     onChunk: emit,
     temperature: 0.5,
     maxTokens: 4096,
+    signal,
   });
 }
