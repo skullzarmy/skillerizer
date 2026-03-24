@@ -307,8 +307,81 @@ textarea {
     border-radius: var(--radius);
     font-size: 0.82rem;
     line-height: 1.55;
-    white-space: pre-wrap;
     word-break: break-word;
+}
+.msg-user {
+    white-space: pre-wrap;
+}
+
+/* Rendered markdown inside AI / system messages */
+.msg-ai p,
+.msg-system p {
+    margin: 0 0 0.45em;
+}
+.msg-ai p:last-child,
+.msg-system p:last-child {
+    margin-bottom: 0;
+}
+.msg-ai ul,
+.msg-ai ol {
+    margin: 0.3em 0 0.5em 1.3em;
+    padding: 0;
+}
+.msg-ai li {
+    margin-bottom: 0.2em;
+}
+.msg-ai code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: rgba(255, 255, 255, 0.07);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+}
+.msg-ai pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.5em 0.7em;
+    margin: 0.4em 0;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    line-height: 1.5;
+}
+.msg-ai pre code {
+    background: none;
+    padding: 0;
+}
+.msg-ai strong {
+    color: #fff;
+}
+.msg-ai h1,
+.msg-ai h2,
+.msg-ai h3,
+.msg-ai h4 {
+    font-size: 0.88rem;
+    margin: 0.5em 0 0.25em;
+    color: var(--accent);
+}
+.msg-ai h1:first-child,
+.msg-ai h2:first-child,
+.msg-ai h3:first-child {
+    margin-top: 0;
+}
+.msg-ai blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 0.4em 0;
+    padding: 0.2em 0.6em;
+    color: var(--text-dim);
+}
+.msg-ai a {
+    color: var(--accent);
+    text-decoration: underline;
+}
+.msg-ai hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0.5em 0;
 }
 .msg-ai {
     background: var(--surface2);

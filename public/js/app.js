@@ -36,6 +36,10 @@ const previewArea = $("#preview-area");
 const statusBadge = $("#status-badge");
 
 /* ── Utility ───────────────────────────────────────────────────────────────── */
+
+// Configure marked for chat-friendly output
+marked.setOptions({ breaks: true, gfm: true });
+
 async function api(method, path, body) {
     const res = await fetch(`/api${path}`, {
         method,
@@ -70,10 +74,20 @@ function scrollBottom(el) {
     el.scrollTop = el.scrollHeight;
 }
 
+/** Render markdown string to sanitized HTML. */
+function renderMarkdown(md) {
+    const raw = marked.parse(md);
+    return DOMPurify.sanitize(raw);
+}
+
 function addMsg(role, text) {
     const div = document.createElement("div");
     div.className = `msg msg-${role}`;
-    div.textContent = text;
+    if (role === "user") {
+        div.textContent = text;
+    } else {
+        div.innerHTML = renderMarkdown(text);
+    }
     chatMessages.appendChild(div);
     scrollBottom(chatMessages);
     return div;
@@ -236,7 +250,7 @@ async function startClarification() {
 
     try {
         const data = await api("POST", `/session/${state.sessionId}/clarify/start`);
-        placeholder.textContent = stripReadyMarker(data.reply ?? "");
+        placeholder.innerHTML = renderMarkdown(stripReadyMarker(data.reply ?? ""));
         if (data.readyToGenerate) handleClarifierReady();
     } catch (err) {
         placeholder.textContent = `⚠️ ${err.message}`;
@@ -269,7 +283,7 @@ async function sendMessage(content) {
 
     try {
         const data = await api("POST", `/session/${state.sessionId}/message`, { content });
-        placeholder.textContent = stripReadyMarker(data.reply ?? "");
+        placeholder.innerHTML = renderMarkdown(stripReadyMarker(data.reply ?? ""));
         if (data.readyToGenerate) handleClarifierReady();
     } catch (err) {
         placeholder.textContent = `⚠️ ${err.message}`;
