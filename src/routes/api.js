@@ -79,8 +79,8 @@ router.post('/session/:id/source', async (req, res) => {
       return res.status(400).json({ error: 'Provide either "url" or "text"' });
     }
 
-    // Seed the conversation with an invisible system context message
-    // so the clarifier knows what it's working with
+    // Seed the conversation with the source context as the first user message
+    // so the clarifier knows what it's working with when it receives the first turn.
     session.history = [
       {
         role: 'user',
@@ -120,6 +120,7 @@ router.post('/session/:id/clarify/start', async (req, res) => {
     await clarify(session.history, (chunk) => { full += chunk; });
     res.json(processClarifierReply(session, full));
   } catch (err) {
+    session.status = 'error';
     res.status(500).json({ error: err.message });
   }
 });
