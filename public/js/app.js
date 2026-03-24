@@ -463,45 +463,47 @@ async function startGeneration() {
 
 /* ── Copy / Download (step 4 + preview toolbar) ───────────────────────────── */
 function copySkill(btn) {
-  const text = state.skill || previewArea.textContent;
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent;
-    btn.textContent = '✅ Copied!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  });
+    const text = state.skill || previewArea.textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = "✅ Copied!";
+        setTimeout(() => {
+            btn.textContent = orig;
+        }, 2000);
+    });
 }
 
 function downloadSkill() {
-  const text = state.skill || previewArea.textContent;
-  if (!text) return;
-  const blob = new Blob([text], { type: 'text/markdown' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${state.filename}.md`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+    const text = state.skill || previewArea.textContent;
+    if (!text) return;
+    const blob = new Blob([text], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${state.filename}.md`;
+    a.click();
+    URL.revokeObjectURL(a.href);
 }
 
 function showPreviewActions() {
-  $('#preview-copy-btn').style.display = '';
-  $('#preview-download-btn').style.display = '';
+    $("#preview-copy-btn").style.display = "";
+    $("#preview-download-btn").style.display = "";
 }
 
 function hidePreviewActions() {
-  $('#preview-copy-btn').style.display = 'none';
-  $('#preview-download-btn').style.display = 'none';
+    $("#preview-copy-btn").style.display = "none";
+    $("#preview-download-btn").style.display = "none";
 }
 
 function updateFilenameLabel() {
-  const el = $('#preview-filename');
-  if (el) el.textContent = `${state.filename}.md`;
+    const el = $("#preview-filename");
+    if (el) el.textContent = `${state.filename}.md`;
 }
 
-$('#copy-btn').addEventListener('click', () => copySkill($('#copy-btn')));
-$('#download-btn').addEventListener('click', downloadSkill);
-$('#preview-copy-btn').addEventListener('click', () => copySkill($('#preview-copy-btn')));
-$('#preview-download-btn').addEventListener('click', downloadSkill);
+$("#copy-btn").addEventListener("click", () => copySkill($("#copy-btn")));
+$("#download-btn").addEventListener("click", downloadSkill);
+$("#preview-copy-btn").addEventListener("click", () => copySkill($("#preview-copy-btn")));
+$("#preview-download-btn").addEventListener("click", downloadSkill);
 
 /* ── New session button ───────────────────────────────────────────────────── */
 $("#new-session-btn").addEventListener("click", () => {
